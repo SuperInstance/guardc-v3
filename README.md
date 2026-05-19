@@ -1,50 +1,108 @@
 # guardc-v3
 
-**GUARD → FLUX-C compiler.** Translates human-readable constraint definitions to a 60-opcode terminating bytecode.
+Compiler from GUARD constraint DSL to FLUX-C bytecode.
 
-Early-stage. 22 tests passing. Compiles all 10 industry presets. Not yet used in production.
+22 tests. 10 industry presets. Proof-chain integration.
+
+---
 
 ## What GUARD Looks Like
 
 ```
-GUARD coolant_temp in [-40, 150] with priority HIGH
-GUARD engine_rpm in [0, 8000] with priority CRITICAL
+constraint coolant_temp: -40.0 <= x <= 150.0 severity CAUTION
+constraint rpm: 0.0 <= x <= 8000.0 severity CRITICAL
+constraint battery_voltage: 10.5 <= x <= 15.0 severity WARNING
 ```
 
-## What It Produces
+GUARD is a small language for defining numeric constraints. Each constraint has:
+- A name
+- Lower and upper bounds
+- A severity level (PASS / CAUTION / WARNING / CRITICAL)
 
-FLUX-C bytecode that the [flux-vm-v3](https://github.com/SuperInstance/flux-vm-v3) executes or JIT-compiles to native code. The compilation chain produces a SHA-256 hash at each stage:
+The compiler turns these into FLUX-C bytecode that the [flux-vm](https://github.com/SuperInstance/flux-vm-v3) executes.
+
+## Quick Start
+
+```bash
+git clone https://github.com/SuperInstance/guardc-v3
+cd guardc-v3
+cargo build --release
+cargo test
+```
+
+### Compile a GUARD file
+
+```bash
+guardc compile constraints.guard -o output.flux
+```
+
+### Compile a preset directly
+
+```bash
+guardc preset automotive_can -o auto.flux
+```
+
+## Pipeline
 
 ```
-source_hash → ast_hash → cir_hash → bytecode_hash → check_hash
+GUARD source
+    ↓  Lexer
+Tokens
+    ↓  Parser
+AST (constraint definitions)
+    ↓  Codegen
+FLUX-C bytecode (60 opcodes)
+    ↓  Proof module
+SHA-256 source hash (anchors the proof chain)
 ```
 
-Tampering with any link invalidates the chain.
+## Presets
+
+10 industry presets with realistic constraint sets. Each preset compiles to valid FLUX-C bytecode:
+
+```bash
+guardc list-presets
+# automotive_can, aviation_adsb, medical_fhir, financial_fix,
+# energy_scada, iot_mqtt, maritime_nmea, nuclear_reactor,
+# railway_ertms, robotics
+```
+
+## GUARD Syntax Reference
+
+```
+constraint <name>: <lo> <= x <= <hi> severity <level>
+```
+
+- `name`: identifier (letters, digits, underscore)
+- `lo`, `hi`: floating-point literals
+- `level`: `PASS` | `CAUTION` | `WARNING` | `CRITICAL`
+
+### Example: Automotive CAN Bus
+
+```
+constraint engine_rpm: 0.0 <= x <= 8000.0 severity CRITICAL
+constraint coolant_temp: -40.0 <= x <= 150.0 severity CAUTION
+constraint battery_voltage: 10.5 <= x <= 15.0 severity WARNING
+constraint throttle_pos: 0.0 <= x <= 100.0 severity CAUTION
+constraint fuel_level: 0.0 <= x <= 100.0 severity PASS
+constraint speed_kmh: 0.0 <= x <= 300.0 severity WARNING
+```
 
 ## Test Results
 
 ```
-cargo test
-22 passed, 0 failed
+running 22 tests
+test result: ok. 22 passed; 0 failed; 0 ignored
 ```
 
-All 10 industry presets compile successfully:
-- aviation_adsb, automotive_can, maritime_nmea, medical_fhir
-- energy_scada, nuclear_reactor, railway_ertms, robotics
-- space_telemetry, underwater_acoustic
+## What to Read Next
 
-## Honest Limitations
-
-- The GUARD DSL supports only simple range constraints (no conditional logic yet)
-- No type inference — bounds are always f64
-- The proof chain is SHA-256 hashes, not formal mathematical proofs
-- No optimization passes — compiles straightforwardly
-- Error messages are functional but not user-friendly
-
-## Related
-
-- [flux-vm-v3](https://github.com/SuperInstance/flux-vm-v3) — the VM that runs the bytecode
-- [constraint-theory-ecosystem](https://github.com/SuperInstance/constraint-theory-ecosystem) — 96 language implementations
+| If you want to... | Go to... |
+|---|---|
+| Execute the compiled bytecode | [flux-vm-v3](https://github.com/SuperInstance/flux-vm-v3) |
+| See the full constraint ecosystem | [constraint-theory-ecosystem](https://github.com/SuperInstance/constraint-theory-ecosystem) |
+| Use standalone fracture in Rust | [flux-fracture](https://github.com/SuperInstance/flux-fracture) |
+| Use standalone fracture in C | [flux-fracture-c](https://github.com/SuperInstance/flux-fracture-c) |
 
 ## License
 
