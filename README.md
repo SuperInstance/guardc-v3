@@ -2,8 +2,6 @@
 
 Compiler from GUARD constraint DSL to FLUX-C bytecode.
 
-22 tests. 10 industry presets. Proof-chain integration.
-
 ---
 
 ## What GUARD Looks Like
